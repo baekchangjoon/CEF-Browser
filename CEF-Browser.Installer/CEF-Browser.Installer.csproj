@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>CEF-Browser.Installer</AssemblyName>
+    <RootNamespace>CEF_Browser_Installer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixSharp" Version="1.25.0" />
+    <PackageReference Include="WixSharp.bin" Version="1.25.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CEF-Browser\CEF-Browser.csproj" />
+  </ItemGroup>
+
+</Project>

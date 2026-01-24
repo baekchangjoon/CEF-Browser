@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>CEF-Browser</AssemblyName>
+    <RootNamespace>CEF_Browser</RootNamespace>
+    <PlatformTarget>x86</PlatformTarget>
+    <Platform>x86</Platform>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CefSharp.WinForms" Version="121.3.70" />
+  </ItemGroup>
+
+</Project>
