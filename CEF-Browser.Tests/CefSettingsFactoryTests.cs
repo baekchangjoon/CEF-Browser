@@ -25,7 +25,7 @@ namespace CEF_Browser.Tests
         {
             string[] args = { };
             var parser = new CommandLineParser(args);
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, 9222);
 
             Assert.IsTrue(Path.IsPathRooted(settings.BrowserSubprocessPath),
                 "BrowserSubprocessPath should be an absolute path");
@@ -40,7 +40,7 @@ namespace CEF_Browser.Tests
         {
             string[] args = { };
             var parser = new CommandLineParser(args);
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, 9222);
 
             Assert.AreEqual(9222, settings.RemoteDebuggingPort);
         }
@@ -50,7 +50,7 @@ namespace CEF_Browser.Tests
         {
             string[] args = { };
             var parser = new CommandLineParser(args);
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, 9222);
 
             Assert.IsTrue(settings.CefCommandLineArgs.ContainsKey("disable-web-security"));
             Assert.AreEqual("1", settings.CefCommandLineArgs["disable-web-security"]);
@@ -61,7 +61,7 @@ namespace CEF_Browser.Tests
         {
             string[] args = { "--user-data-dir", "C:\\MyData" };
             var parser = new CommandLineParser(args);
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, 9222);
 
             Assert.IsTrue(settings.CefCommandLineArgs.ContainsKey("user-data-dir"));
             Assert.AreEqual("C:\\MyData", settings.CefCommandLineArgs["user-data-dir"]);
@@ -72,7 +72,7 @@ namespace CEF_Browser.Tests
         {
             string[] args = { };
             var parser = new CommandLineParser(args);
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, 9222);
 
             Assert.IsFalse(settings.CefCommandLineArgs.ContainsKey("user-data-dir"));
         }

@@ -71,10 +71,14 @@ namespace CEF_Browser_Installer
             // Strategy 1: Relative paths from installer directory (x86 first - correct path)
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\CEF-Browser\bin\x86\Release\net48")));
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\..\CEF-Browser\bin\x86\Release\net48")));
+            // Fallback to AnyCPU path
+            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\CEF-Browser\bin\Release\net48")));
 
             // Strategy 2: Relative paths from current directory (x86 first - correct path)
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"..\CEF-Browser\bin\x86\Release\net48")));
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"CEF-Browser\bin\x86\Release\net48")));
+            // Fallback to AnyCPU path
+            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"..\CEF-Browser\bin\Release\net48")));
 
             // Strategy 3: Recursive search from solution root (x86 first - correct path)
             var solutionRoot = installerDir;

@@ -24,7 +24,7 @@ namespace CEF_Browser.Tests
             string[] args = { };
             var parser = new CommandLineParser(args);
             var factory = new CefSettingsFactory();
-            var settings = factory.Create(parser);
+            var settings = factory.Create(parser, RemoteDebuggingPort);
 
             Assert.AreEqual(RemoteDebuggingPort, settings.RemoteDebuggingPort,
                 "RemoteDebuggingPort should be set to 9222 for CDP support");
