@@ -42,9 +42,7 @@ dotnet test CEF-Browser.Tests/CEF-Browser.Tests.csproj --configuration Release
 # Build installer project
 dotnet build CEF-Browser.Installer/CEF-Browser.Installer.csproj --configuration Release
 
-# Run installer to generate MSI
-.\CEF-Browser.Installer\bin\Release\net48\CEF-Browser.Installer.exe
-# or
+# Run installer to generate MSI (x86 path is correct for PlatformTarget=x86)
 .\CEF-Browser.Installer\bin\x86\Release\net48\CEF-Browser.Installer.exe
 ```
 
@@ -75,10 +73,8 @@ To create the MSI installer, you need to build and run the installer project:
    dotnet build CEF-Browser.Installer/CEF-Browser.Installer.csproj --configuration Release
    ```
 
-2. Run the installer executable to generate the MSI:
+2. Run the installer executable to generate the MSI (x86 path is correct for PlatformTarget=x86):
    ```powershell
-   .\CEF-Browser.Installer\bin\Release\net48\CEF-Browser.Installer.exe
-   # or
    .\CEF-Browser.Installer\bin\x86\Release\net48\CEF-Browser.Installer.exe
    ```
 

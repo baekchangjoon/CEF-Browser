@@ -105,10 +105,10 @@ jobs:
         # Build the installer project
         dotnet build CEF-Browser.Installer/CEF-Browser.Installer.csproj --configuration Release --no-restore
         
-        # Find the installer executable (path may vary)
+        # Find the installer executable (x86 path is correct for PlatformTarget=x86)
         $possiblePaths = @(
-          "CEF-Browser.Installer\bin\Release\net48\CEF-Browser.Installer.exe",
-          "CEF-Browser.Installer\bin\x86\Release\net48\CEF-Browser.Installer.exe"
+          "CEF-Browser.Installer\bin\x86\Release\net48\CEF-Browser.Installer.exe",
+          "CEF-Browser.Installer\bin\Release\net48\CEF-Browser.Installer.exe"
         )
 
         $installerExe = $null

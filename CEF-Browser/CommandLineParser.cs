@@ -18,16 +18,17 @@ namespace CEF_Browser
         {
             for (int i = 0; i < args.Length; i++)
             {
-                if (IsUserDataDirArgument(i))
+                if (IsOptionArgument(args[i]))
                 {
-                    i++;
+                    // Skip value if it's a known option that takes a value
+                    if (IsUserDataDirArgument(i) || IsRemoteDebuggingPortArgument(i))
+                    {
+                        i++;
+                    }
                     continue;
                 }
 
-                if (!IsOptionArgument(args[i]))
-                {
-                    return args[i];
-                }
+                return args[i];
             }
 
             return "www.google.com";
@@ -41,14 +42,52 @@ namespace CEF_Browser
                 {
                     return args[i + 1];
                 }
+
+                // Also support --user-data-dir=PATH format
+                if (args[i].StartsWith("--user-data-dir="))
+                {
+                    return args[i].Substring("--user-data-dir=".Length);
+                }
             }
 
             return null;
         }
 
+        public int ParseRemoteDebuggingPort()
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (IsRemoteDebuggingPortArgument(i))
+                {
+                    if (int.TryParse(args[i + 1], out int port))
+                    {
+                        return port;
+                    }
+                }
+
+                // Also support --remote-debugging-port=PORT format
+                if (args[i].StartsWith("--remote-debugging-port="))
+                {
+                    var value = args[i].Substring("--remote-debugging-port=".Length);
+                    if (int.TryParse(value, out int port))
+                    {
+                        return port;
+                    }
+                }
+            }
+
+            return -1; // Not specified
+        }
+
         private bool IsUserDataDirArgument(int index)
         {
-            return args[index] == "--user-data-dir" && 
+            return args[index] == "--user-data-dir" &&
+                   index + 1 < args.Length;
+        }
+
+        private bool IsRemoteDebuggingPortArgument(int index)
+        {
+            return args[index] == "--remote-debugging-port" &&
                    index + 1 < args.Length;
         }
 

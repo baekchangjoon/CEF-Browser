@@ -68,28 +68,22 @@ namespace CEF_Browser_Installer
             // Try multiple strategies to find CEF-Browser.exe
             var searchPaths = new List<string>();
 
-            // Strategy 1: Relative paths from installer directory
-            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\CEF-Browser\bin\Release\net48")));
+            // Strategy 1: Relative paths from installer directory (x86 first - correct path)
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\CEF-Browser\bin\x86\Release\net48")));
-            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\..\CEF-Browser\bin\Release\net48")));
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(installerDir, @"..\..\..\..\CEF-Browser\bin\x86\Release\net48")));
 
-            // Strategy 2: Relative paths from current directory
-            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"..\CEF-Browser\bin\Release\net48")));
+            // Strategy 2: Relative paths from current directory (x86 first - correct path)
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"..\CEF-Browser\bin\x86\Release\net48")));
-            searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"CEF-Browser\bin\Release\net48")));
             searchPaths.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(currentDir, @"CEF-Browser\bin\x86\Release\net48")));
 
-            // Strategy 3: Recursive search from solution root
+            // Strategy 3: Recursive search from solution root (x86 first - correct path)
             var solutionRoot = installerDir;
             for (int i = 0; i < 5; i++)
             {
-                var testPath1 = System.IO.Path.Combine(solutionRoot, @"CEF-Browser\bin\Release\net48");
-                var testPath2 = System.IO.Path.Combine(solutionRoot, @"CEF-Browser\bin\x86\Release\net48");
-                if (System.IO.Directory.Exists(testPath1) || System.IO.Directory.Exists(testPath2))
+                var testPath = System.IO.Path.Combine(solutionRoot, @"CEF-Browser\bin\x86\Release\net48");
+                if (System.IO.Directory.Exists(testPath))
                 {
-                    searchPaths.Add(System.IO.Path.GetFullPath(testPath1));
-                    searchPaths.Add(System.IO.Path.GetFullPath(testPath2));
+                    searchPaths.Add(System.IO.Path.GetFullPath(testPath));
                     break;
                 }
                 solutionRoot = System.IO.Path.GetDirectoryName(solutionRoot);
