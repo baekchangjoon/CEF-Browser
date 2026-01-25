@@ -31,6 +31,7 @@ namespace CEF_Browser.Tests
         }
 
         [Test]
+        [Explicit("Requires running CEF-Browser instance")]
         public async Task Verify_CdpEndpoint_IsAccessible()
         {
             using (var httpClient = new HttpClient())
