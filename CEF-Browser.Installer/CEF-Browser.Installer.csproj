@@ -6,11 +6,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>CEF-Browser.Installer</AssemblyName>
     <RootNamespace>CEF_Browser_Installer</RootNamespace>
+    <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="WixSharp" Version="1.25.0" />
-    <PackageReference Include="WixSharp.bin" Version="1.25.0" />
   </ItemGroup>
 
   <ItemGroup>

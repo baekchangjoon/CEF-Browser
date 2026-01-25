@@ -30,7 +30,7 @@ namespace CEF_Browser
                 }
             }
 
-            return "about:blank";
+            return "www.google.com";
         }
 
         public string ParseUserDataDir()

@@ -242,3 +242,6 @@ CEF-Browser.Tests/bin/
 CEF-Browser.Tests/obj/
 CEF-Browser.Installer/bin/
 CEF-Browser.Installer/obj/
+
+# WixSharp auto-generated files
+**/wix/*.g.wxs

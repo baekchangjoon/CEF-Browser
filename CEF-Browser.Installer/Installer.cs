@@ -11,15 +11,18 @@ namespace CEF_Browser_Installer
     {
         public static void Main(string[] args)
         {
+            // Set WiX location if not found automatically
+            var wixBinPath = @"C:\Program Files (x86)\WiX Toolset v3.14\bin";
+            if (System.IO.Directory.Exists(wixBinPath))
+            {
+                WixSharp.Compiler.WixLocation = wixBinPath;
+            }
+
             var exeFile = new File(@"..\CEF-Browser\bin\x86\Release\net48\CEF-Browser.exe")
             {
                 Shortcuts = new[]
                 {
                     new FileShortcut("CEF Browser", @"%Desktop%")
-                    {
-                        IconFile = @"..\CEF-Browser\bin\x86\Release\net48\CEF-Browser.exe"
-                    },
-                    new FileShortcut("CEF Browser", @"%ProgramMenu%\CEF Browser")
                     {
                         IconFile = @"..\CEF-Browser\bin\x86\Release\net48\CEF-Browser.exe"
                     }

@@ -29,12 +29,12 @@ namespace CEF_Browser.Tests
         }
 
         [Test]
-        public void ParseUrl_NoUrl_ReturnsAboutBlank()
+        public void ParseUrl_NoUrl_ReturnsGoogle()
         {
             string[] args = { "--user-data-dir", "C:\\Data" };
             var parser = new CommandLineParser(args);
             string url = parser.ParseUrl();
-            Assert.AreEqual("about:blank", url);
+            Assert.AreEqual("www.google.com", url);
         }
 
         [Test]
@@ -56,11 +56,11 @@ namespace CEF_Browser.Tests
         }
 
         [Test]
-        public void ParseUrl_WithNullArgs_ReturnsAboutBlank()
+        public void ParseUrl_WithNullArgs_ReturnsGoogle()
         {
             var parser = new CommandLineParser(null);
             string url = parser.ParseUrl();
-            Assert.AreEqual("about:blank", url);
+            Assert.AreEqual("www.google.com", url);
         }
     }
 }
