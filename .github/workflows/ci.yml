@@ -169,7 +169,9 @@ jobs:
     needs: build-and-test
     runs-on: windows-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    
+    permissions:
+      contents: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -187,8 +189,8 @@ jobs:
           $version = "${{ github.event.inputs.version }}"
         } else {
           # Try to get version from git tag
-          $tag = git describe --tags --exact-match 2>$null
-          if ($tag) {
+          $tag = git describe --tags --exact-match 2>&1
+          if ($LASTEXITCODE -eq 0 -and $tag -and $tag -notmatch '^fatal:') {
             $version = $tag -replace '^v', ''
           } else {
             # Use timestamp-based version
@@ -196,8 +198,9 @@ jobs:
             $version = "1.0.0-$timestamp"
           }
         }
-        Write-Host "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         Write-Host "Version: $version"
+        exit 0
         
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -240,14 +243,16 @@ jobs:
     - name: Get version
       id: get_version
       run: |
-        $tag = git describe --tags --exact-match 2>$null
-        if ($tag) {
+        # Try to get version from git tag
+        $tag = git describe --tags --exact-match 2>&1
+        if ($LASTEXITCODE -eq 0 -and $tag -and $tag -notmatch '^fatal:') {
           $version = $tag -replace '^v', ''
         } else {
           $timestamp = Get-Date -Format "yyyy.MM.dd.HHmm"
           $version = "1.0.0-$timestamp"
         }
-        Write-Host "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        exit 0
         
     - name: Setup .NET SDK for packaging
       uses: actions/setup-dotnet@v4
@@ -276,13 +281,27 @@ jobs:
           exit 1
         }
         
+        # Convert version format for NuGet (replace dots with hyphens in pre-release part)
+        # NuGet doesn't support dots in pre-release version (e.g., 1.0.0-2026.01.25.0602)
+        # Convert to: 1.0.0-20260125-0602
+        if ($version -match '^(\d+\.\d+\.\d+)-(.+)$') {
+          $baseVersion = $matches[1]
+          $prereleasePart = $matches[2] -replace '\.', '-'
+          $nugetVersion = "$baseVersion-$prereleasePart"
+        } else {
+          $nugetVersion = $version
+        }
+
+        Write-Host "Original version: $version"
+        Write-Host "NuGet version: $nugetVersion"
+
         # Create nuspec file
         $nuspecLines = @(
           '<?xml version="1.0" encoding="utf-8"?>',
           '<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">',
           '  <metadata>',
           "    <id>$packageId</id>",
-          "    <version>$version</version>",
+          "    <version>$nugetVersion</version>",
           '    <title>CEF Browser Installer</title>',
           '    <authors>CEF Browser Team</authors>',
           '    <owners>CEF Browser Team</owners>',
