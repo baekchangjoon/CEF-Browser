@@ -1,0 +1,332 @@
+name: Build, Test, and Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: false
+        type: string
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  WIX_VERSION: '3.14.0'
+  SOLUTION_FILE: 'CEF-Browser.sln'
+  INSTALLER_OUTPUT: 'InstallerOutput/CEF-Browser-Setup.msi'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Install WiX Toolset
+      run: |
+        $wixUrl = "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip"
+        $wixDir = "$env:RUNNER_TEMP\WiX"
+        $tempPath = "$env:RUNNER_TEMP\wix.zip"
+        
+        Write-Host "Downloading WiX Toolset..."
+        Invoke-WebRequest -Uri $wixUrl -OutFile $tempPath -UseBasicParsing
+        
+        Write-Host "Extracting WiX Toolset..."
+        Expand-Archive -Path $tempPath -DestinationPath $wixDir -Force
+        
+        # Find the actual bin directory (WiX zip structure may vary)
+        Write-Host "Searching for WiX binaries..."
+        $candleExe = Get-ChildItem -Path $wixDir -Recurse -Filter "candle.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $candleExe) {
+          Write-Host "candle.exe not found in extracted files" -ForegroundColor Red
+          Write-Host "Extracted directory structure:"
+          Get-ChildItem -Path $wixDir -Recurse | Select-Object FullName | ForEach-Object { Write-Host $_.FullName }
+          exit 1
+        }
+        
+        $wixPath = $candleExe.DirectoryName
+        Write-Host "WiX Toolset found at: $wixPath"
+        
+        # Add WiX to PATH and set environment variable
+        $env:PATH = "$wixPath;$env:PATH"
+        $env:WIX_BIN_PATH = $wixPath
+        echo "$wixPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "WIX_BIN_PATH=$wixPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        
+        # Verify installation
+        Write-Host "Verifying WiX installation..."
+        $candlePath = Join-Path $wixPath "candle.exe"
+        if (Test-Path $candlePath) {
+          & $candlePath -? 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 1) {
+            Write-Host "WiX Toolset verified successfully"
+          } else {
+            Write-Host "WiX Toolset verification failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+            exit 1
+          }
+        } else {
+          Write-Host "candle.exe not found at: $candlePath" -ForegroundColor Red
+          exit 1
+        }
+        
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+      
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore
+      
+    - name: Run tests
+      run: dotnet test CEF-Browser.Tests/CEF-Browser.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: '**/*.trx'
+        retention-days: 7
+        
+    - name: Build installer
+      run: |
+        # Build the installer project
+        dotnet build CEF-Browser.Installer/CEF-Browser.Installer.csproj --configuration Release --no-restore
+        
+        # Find the installer executable (path may vary)
+        $possiblePaths = @(
+          "CEF-Browser.Installer\bin\Release\net48\CEF-Browser.Installer.exe",
+          "CEF-Browser.Installer\bin\x86\Release\net48\CEF-Browser.Installer.exe"
+        )
+
+        $installerExe = $null
+        foreach ($path in $possiblePaths) {
+          if (Test-Path $path) {
+            $installerExe = $path
+            break
+          }
+        }
+
+        if ($null -eq $installerExe) {
+          Write-Host "Installer executable not found in expected locations" -ForegroundColor Red
+          Write-Host "Searching for installer executable..."
+          $found = Get-ChildItem -Recurse -Filter "CEF-Browser.Installer.exe" | Select-Object -First 1
+          if ($found) {
+            $installerExe = $found.FullName
+            Write-Host "Found installer at: $installerExe"
+          } else {
+            Write-Host "Installer executable not found!" -ForegroundColor Red
+            exit 1
+          }
+        }
+
+        Write-Host "Running installer to generate MSI..."
+        Write-Host "Installer path: $installerExe"
+
+        # Create InstallerOutput directory if it doesn't exist
+        New-Item -ItemType Directory -Path "InstallerOutput" -Force | Out-Null
+
+        # Run installer with error handling
+        $process = Start-Process -FilePath $installerExe -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0) {
+          Write-Host "Installer execution failed with exit code: $($process.ExitCode)" -ForegroundColor Red
+          exit 1
+        }
+        Write-Host "Installer executed successfully"
+        
+    - name: Verify MSI file
+      run: |
+        if (-not (Test-Path ${{ env.INSTALLER_OUTPUT }})) {
+          Write-Host "MSI file not found at: ${{ env.INSTALLER_OUTPUT }}" -ForegroundColor Red
+          Get-ChildItem -Recurse -Filter "*.msi" | ForEach-Object { Write-Host "Found MSI: $($_.FullName)" }
+          exit 1
+        }
+        Write-Host "MSI file verified: ${{ env.INSTALLER_OUTPUT }}"
+        $msiInfo = Get-Item ${{ env.INSTALLER_OUTPUT }}
+        Write-Host "MSI size: $($msiInfo.Length) bytes"
+        
+    - name: Upload MSI artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: installer-msi
+        path: ${{ env.INSTALLER_OUTPUT }}
+        retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: build-and-test
+    runs-on: windows-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download MSI artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: installer-msi
+        path: InstallerOutput
+        
+    - name: Get version from tag or input
+      id: get_version
+      run: |
+        if ("${{ github.event.inputs.version }}" -ne "") {
+          $version = "${{ github.event.inputs.version }}"
+        } else {
+          # Try to get version from git tag
+          $tag = git describe --tags --exact-match 2>$null
+          if ($tag) {
+            $version = $tag -replace '^v', ''
+          } else {
+            # Use timestamp-based version
+            $timestamp = Get-Date -Format "yyyy.MM.dd.HHmm"
+            $version = "1.0.0-$timestamp"
+          }
+        }
+        Write-Host "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        Write-Host "Version: $version"
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        name: Release v${{ steps.get_version.outputs.version }}
+        body: |
+          ## CEF Browser v${{ steps.get_version.outputs.version }}
+          
+          ### Installation
+          Download and run `CEF-Browser-Setup.msi` to install the application.
+          
+          ### Changes
+          - Automated build and release
+        files: ${{ env.INSTALLER_OUTPUT }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-package:
+    name: Publish to GitHub Packages
+    needs: build-and-test
+    runs-on: windows-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download MSI artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: installer-msi
+        path: InstallerOutput
+        
+    - name: Get version
+      id: get_version
+      run: |
+        $tag = git describe --tags --exact-match 2>$null
+        if ($tag) {
+          $version = $tag -replace '^v', ''
+        } else {
+          $timestamp = Get-Date -Format "yyyy.MM.dd.HHmm"
+          $version = "1.0.0-$timestamp"
+        }
+        Write-Host "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        
+    - name: Setup .NET SDK for packaging
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Download NuGet.exe
+      run: |
+        $nugetPath = "$env:RUNNER_TEMP\nuget.exe"
+        if (-not (Test-Path $nugetPath)) {
+          Write-Host "Downloading NuGet.exe..."
+          Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath -UseBasicParsing
+        }
+        $env:PATH = "$env:RUNNER_TEMP;$env:PATH"
+        echo "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+    - name: Create NuGet package for MSI
+      run: |
+        $msiPath = "${{ env.INSTALLER_OUTPUT }}"
+        $version = "${{ steps.get_version.outputs.version }}"
+        $packageId = "CEF-Browser.Installer"
+        $nuspecPath = "$packageId.nuspec"
+        
+        if (-not (Test-Path $msiPath)) {
+          Write-Host "MSI file not found at: $msiPath" -ForegroundColor Red
+          exit 1
+        }
+        
+        # Create nuspec file
+        $nuspecLines = @(
+          '<?xml version="1.0" encoding="utf-8"?>',
+          '<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">',
+          '  <metadata>',
+          "    <id>$packageId</id>",
+          "    <version>$version</version>",
+          '    <title>CEF Browser Installer</title>',
+          '    <authors>CEF Browser Team</authors>',
+          '    <owners>CEF Browser Team</owners>',
+          '    <requireLicenseAcceptance>false</requireLicenseAcceptance>',
+          '    <description>CEF Browser Windows Installer (MSI)</description>',
+          '    <summary>Windows Installer package for CEF Browser application</summary>',
+          "    <releaseNotes>CEF Browser v$version</releaseNotes>",
+          '  </metadata>',
+          '  <files>',
+          "    <file src=`"$msiPath`" target=`"tools\CEF-Browser-Setup.msi`" />",
+          '  </files>',
+          '</package>'
+        )
+        $nuspecLines | Out-File -FilePath $nuspecPath -Encoding UTF8
+        
+        # Create tools directory and copy MSI
+        New-Item -ItemType Directory -Path "tools" -Force | Out-Null
+        Copy-Item -Path $msiPath -Destination "tools\CEF-Browser-Setup.msi" -Force
+        
+        # Create packages directory
+        New-Item -ItemType Directory -Path "packages" -Force | Out-Null
+        
+        # Pack NuGet package using NuGet.exe
+        Write-Host "Creating NuGet package..."
+        nuget pack $nuspecPath -OutputDirectory packages -NoDefaultExcludes
+        
+    - name: Publish to GitHub Packages
+      run: |
+        $packageFile = Get-ChildItem -Path "./packages" -Filter "*.nupkg" | Select-Object -First 1
+        if (-not $packageFile) {
+          Write-Host "NuGet package not found!" -ForegroundColor Red
+          Get-ChildItem -Path "./packages" | ForEach-Object { Write-Host "Found: $($_.Name)" }
+          exit 1
+        }
+        
+        Write-Host "Publishing package: $($packageFile.Name)"
+        Write-Host "Package size: $($packageFile.Length) bytes"
+        
+        # Configure NuGet source
+        $source = "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+        $token = "${{ secrets.GITHUB_TOKEN }}"
+        
+        # Add source using NuGet.exe
+        nuget sources add -Name github -Source $source -Username ${{ github.repository_owner }} -Password $token
+        
+        # Publish package using NuGet.exe
+        nuget push $packageFile.FullName -Source github -SkipDuplicate
